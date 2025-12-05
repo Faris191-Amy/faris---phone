@@ -1,8 +1,6 @@
-import { type User, type InsertUser, type Product, type Category, type Cart, type CartItem } from "@shared/schema";
-import { randomUUID } from "crypto";
+import type { Product, Category } from "@shared/schema";
 
-// Product data
-const categories: Category[] = [
+export const categories: Category[] = [
   {
     id: "smartphones",
     name: "Smartphones",
@@ -61,7 +59,7 @@ const categories: Category[] = [
   },
 ];
 
-const products: Product[] = [
+export const products: Product[] = [
   {
     id: "iphone-15-pro",
     name: "iPhone 15 Pro Max",
@@ -368,172 +366,33 @@ const products: Product[] = [
   },
 ];
 
-// Storage interface
-export interface IStorage {
-  // Users
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  
-  // Products
-  getProducts(): Promise<Product[]>;
-  getProductById(id: string): Promise<Product | undefined>;
-  getProductsByCategory(categoryId: string): Promise<Product[]>;
-  getFeaturedProducts(): Promise<Product[]>;
-  getNewProducts(): Promise<Product[]>;
-  searchProducts(query: string): Promise<Product[]>;
-  
-  // Categories
-  getCategories(): Promise<Category[]>;
-  getCategoryById(id: string): Promise<Category | undefined>;
-  
-  // Cart (session-based)
-  getCart(sessionId: string): Promise<Cart>;
-  addToCart(sessionId: string, productId: string, quantity: number): Promise<Cart>;
-  updateCartItem(sessionId: string, itemId: string, quantity: number): Promise<Cart>;
-  removeFromCart(sessionId: string, itemId: string): Promise<Cart>;
-  clearCart(sessionId: string): Promise<Cart>;
+export function getProductById(id: string): Product | undefined {
+  return products.find((p) => p.id === id);
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private carts: Map<string, Cart>;
-
-  constructor() {
-    this.users = new Map();
-    this.carts = new Map();
-  }
-
-  // Users
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
-  }
-
-  // Products
-  async getProducts(): Promise<Product[]> {
-    return products;
-  }
-
-  async getProductById(id: string): Promise<Product | undefined> {
-    return products.find((p) => p.id === id);
-  }
-
-  async getProductsByCategory(categoryId: string): Promise<Product[]> {
-    return products.filter((p) => p.category === categoryId);
-  }
-
-  async getFeaturedProducts(): Promise<Product[]> {
-    return products.filter((p) => p.isFeatured);
-  }
-
-  async getNewProducts(): Promise<Product[]> {
-    return products.filter((p) => p.isNew);
-  }
-
-  async searchProducts(query: string): Promise<Product[]> {
-    const lowerQuery = query.toLowerCase();
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(lowerQuery) ||
-        p.nameAr.includes(query) ||
-        p.brand.toLowerCase().includes(lowerQuery) ||
-        p.category.toLowerCase().includes(lowerQuery)
-    );
-  }
-
-  // Categories
-  async getCategories(): Promise<Category[]> {
-    return categories;
-  }
-
-  async getCategoryById(id: string): Promise<Category | undefined> {
-    return categories.find((c) => c.id === id);
-  }
-
-  // Cart
-  private calculateCart(items: CartItem[]): Cart {
-    const total = items.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-    const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-    return { items, total, itemCount };
-  }
-
-  async getCart(sessionId: string): Promise<Cart> {
-    return this.carts.get(sessionId) || { items: [], total: 0, itemCount: 0 };
-  }
-
-  async addToCart(sessionId: string, productId: string, quantity: number): Promise<Cart> {
-    const product = await this.getProductById(productId);
-    if (!product) {
-      throw new Error("Product not found");
-    }
-
-    const cart = await this.getCart(sessionId);
-    const existingItem = cart.items.find((item) => item.product.id === productId);
-
-    let newItems: CartItem[];
-    if (existingItem) {
-      newItems = cart.items.map((item) =>
-        item.product.id === productId
-          ? { ...item, quantity: item.quantity + quantity }
-          : item
-      );
-    } else {
-      const newItem: CartItem = {
-        id: `cart-${productId}-${Date.now()}`,
-        product,
-        quantity,
-      };
-      newItems = [...cart.items, newItem];
-    }
-
-    const newCart = this.calculateCart(newItems);
-    this.carts.set(sessionId, newCart);
-    return newCart;
-  }
-
-  async updateCartItem(sessionId: string, itemId: string, quantity: number): Promise<Cart> {
-    const cart = await this.getCart(sessionId);
-    
-    let newItems: CartItem[];
-    if (quantity <= 0) {
-      newItems = cart.items.filter((item) => item.id !== itemId);
-    } else {
-      newItems = cart.items.map((item) =>
-        item.id === itemId ? { ...item, quantity } : item
-      );
-    }
-
-    const newCart = this.calculateCart(newItems);
-    this.carts.set(sessionId, newCart);
-    return newCart;
-  }
-
-  async removeFromCart(sessionId: string, itemId: string): Promise<Cart> {
-    const cart = await this.getCart(sessionId);
-    const newItems = cart.items.filter((item) => item.id !== itemId);
-    const newCart = this.calculateCart(newItems);
-    this.carts.set(sessionId, newCart);
-    return newCart;
-  }
-
-  async clearCart(sessionId: string): Promise<Cart> {
-    const emptyCart: Cart = { items: [], total: 0, itemCount: 0 };
-    this.carts.set(sessionId, emptyCart);
-    return emptyCart;
-  }
+export function getProductsByCategory(categoryId: string): Product[] {
+  return products.filter((p) => p.category === categoryId);
 }
 
-export const storage = new MemStorage();
+export function getFeaturedProducts(): Product[] {
+  return products.filter((p) => p.isFeatured);
+}
+
+export function getNewProducts(): Product[] {
+  return products.filter((p) => p.isNew);
+}
+
+export function searchProducts(query: string): Product[] {
+  const lowerQuery = query.toLowerCase();
+  return products.filter(
+    (p) =>
+      p.name.toLowerCase().includes(lowerQuery) ||
+      p.nameAr.includes(query) ||
+      p.brand.toLowerCase().includes(lowerQuery) ||
+      p.category.toLowerCase().includes(lowerQuery)
+  );
+}
+
+export function getCategoryById(id: string): Category | undefined {
+  return categories.find((c) => c.id === id);
+}
