@@ -1,0 +1,12 @@
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "npm install",
+    "buildEnv": {},
+    "env": {}
+  },
+  "deploy": {
+    "startCommand": "npm start"
+  },
+  "rootDirectory": "server"
+}
